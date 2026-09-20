@@ -1,7 +1,7 @@
 # DarkTrace AI
 
 <p align="center">
-  <img src="src/assets/icon.png" width="90" alt="DarkTrace AI Logo">
+  <img src="src/assets/dtai.png" width="90" alt="DarkTrace AI Logo">
 </p>
 
 <h2 align="center">DarkTrace AI</h2>
