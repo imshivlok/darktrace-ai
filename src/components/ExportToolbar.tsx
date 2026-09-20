@@ -48,6 +48,9 @@ function toCsv(data: InvestigationCase): string {
     .join("\n");
 }
 
+const secondaryButton =
+  "rounded-full border border-line bg-card-raised px-3.5 py-1.5 text-xs font-medium text-fg-muted transition-all duration-200 hover:border-line-strong hover:text-fg active:scale-[0.97]";
+
 export default function ExportToolbar({ data }: ExportToolbarProps) {
   const handleExportCsv = () => {
     downloadFile(`${data.actor.handle}_report.csv`, toCsv(data), "text/csv");
@@ -63,24 +66,16 @@ export default function ExportToolbar({ data }: ExportToolbarProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2 no-print">
-      <button
-        type="button"
-        onClick={handleExportCsv}
-        className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition-all duration-200 hover:border-emerald-400/50 hover:bg-emerald-500/20 hover:shadow-[0_0_16px_-4px_rgba(16,185,129,0.5)] active:scale-[0.97]"
-      >
+      <button type="button" onClick={handleExportCsv} className={secondaryButton}>
         Export CSV
       </button>
-      <button
-        type="button"
-        onClick={handleExportJson}
-        className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 transition-all duration-200 hover:border-cyan-400/50 hover:bg-cyan-500/20 hover:shadow-[0_0_16px_-4px_rgba(34,211,238,0.5)] active:scale-[0.97]"
-      >
+      <button type="button" onClick={handleExportJson} className={secondaryButton}>
         Export JSON
       </button>
       <button
         type="button"
         onClick={() => window.print()}
-        className="rounded-lg border border-zinc-500/30 bg-zinc-500/10 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all duration-200 hover:border-zinc-400/50 hover:bg-zinc-500/20 hover:shadow-[0_0_16px_-4px_rgba(113, 113, 122,0.5)] active:scale-[0.97]"
+        className="rounded-full border border-accent/40 bg-accent/10 px-3.5 py-1.5 text-xs font-medium text-accent transition-all duration-200 hover:border-accent/70 hover:bg-accent/20 active:scale-[0.97]"
       >
         Export Report
       </button>

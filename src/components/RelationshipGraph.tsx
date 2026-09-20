@@ -13,13 +13,14 @@ interface RelationshipGraphProps {
   data: RelationshipGraphData;
 }
 
+// SVG can't use Tailwind tokens, so these mirror the theme colours in index.css
 const typeColor: Record<RelationshipNodeType, string> = {
-  actor: "#a1a1aa", // zinc-400
-  alias: "#38bdf8", // sky-400
-  pgp: "#71717a", // zinc-500
-  wallet: "#34d399", // emerald-400
-  source: "#fbbf24", // amber-400
-  entity: "#f87171", // red-400
+  actor: "#9c8cff", // accent
+  alias: "#6cc4f0", // info
+  pgp: "#8f8da6", // neutral
+  wallet: "#5fd3a5", // ok
+  source: "#e9b949", // warn
+  entity: "#f2717f", // danger
 };
 
 const typeLabel: Record<RelationshipNodeType, string> = {
@@ -68,9 +69,9 @@ export default function RelationshipGraph({ data }: RelationshipGraphProps) {
   }, [hoveredId, data.edges]);
 
   return (
-    <section className="rounded-2xl border border-slate-700/50 bg-[#111214]/70 backdrop-blur-xl p-4 sm:p-6">
+    <section className="rounded-2xl border border-line-faint bg-band/60 p-4 sm:p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-slate-300">
+        <h2 className="text-sm font-medium text-fg">
           Relationship graph
         </h2>
         <div className="hidden sm:flex flex-wrap items-center gap-3">
@@ -81,7 +82,7 @@ export default function RelationshipGraph({ data }: RelationshipGraphProps) {
                 style={{ backgroundColor: typeColor[type] }}
                 aria-hidden="true"
               />
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-fg-subtle">
                 {typeLabel[type]}
               </span>
             </div>
@@ -89,7 +90,7 @@ export default function RelationshipGraph({ data }: RelationshipGraphProps) {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="scroll-thin overflow-x-auto">
         <svg
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           className="w-full min-w-140"
@@ -106,6 +107,10 @@ export default function RelationshipGraph({ data }: RelationshipGraphProps) {
                 connectedIds.has(edge.sourceId) &&
                 connectedIds.has(edge.targetId)
               );
+            // Edges touching the hovered node light up in the accent colour
+            const highlighted =
+              hoveredId !== null &&
+              (edge.sourceId === hoveredId || edge.targetId === hoveredId);
             return (
               <line
                 key={`${edge.sourceId}-${edge.targetId}-${i}`}
@@ -113,7 +118,7 @@ export default function RelationshipGraph({ data }: RelationshipGraphProps) {
                 y1={from.y}
                 x2={to.x}
                 y2={to.y}
-                stroke={dimmed ? "#1e293b" : "#475569"}
+                stroke={highlighted ? "#9c8cff" : dimmed ? "#1b1b2b" : "#3a3956"}
                 strokeWidth={1.5}
                 className="transition-colors duration-200"
               />
@@ -137,7 +142,7 @@ export default function RelationshipGraph({ data }: RelationshipGraphProps) {
               >
                 <circle
                   r={isCenter ? 26 : 18}
-                  fill="#111214"
+                  fill="#0e0e15"
                   stroke={typeColor[node.type]}
                   strokeWidth={isCenter ? 2.5 : 2}
                 />
@@ -149,7 +154,7 @@ export default function RelationshipGraph({ data }: RelationshipGraphProps) {
                 <text
                   y={isCenter ? 42 : 34}
                   textAnchor="middle"
-                  className="fill-slate-300 font-mono"
+                  className="fill-fg-muted font-mono"
                   fontSize={isCenter ? 12 : 10.5}
                 >
                   {node.label.length > 16

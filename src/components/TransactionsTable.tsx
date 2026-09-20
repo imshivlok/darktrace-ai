@@ -9,9 +9,9 @@ interface TransactionsTableProps {
 }
 
 const statusStyles: Record<TransactionStatus, string> = {
-  confirmed: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
-  pending: "text-amber-300 bg-amber-500/10 border-amber-500/30",
-  flagged: "text-red-300 bg-red-500/10 border-red-500/30",
+  confirmed: "text-ok bg-ok/10 border-ok/30",
+  pending: "text-warn bg-warn/10 border-warn/30",
+  flagged: "text-danger bg-danger/10 border-danger/30",
 };
 
 function formatDate(iso: string): string {
@@ -26,15 +26,15 @@ export default function TransactionsTable({
   transactions,
 }: TransactionsTableProps) {
   return (
-    <section className="rounded-2xl border border-slate-700/50 bg-[#111214]/70 backdrop-blur-xl p-4 sm:p-6">
-      <h2 className="mb-4 text-sm font-medium text-slate-300">
+    <section className="rounded-2xl border border-line-faint bg-band/60 p-4 sm:p-6">
+      <h2 className="mb-4 text-sm font-medium text-fg">
         Wallet transactions
       </h2>
 
-      <div className="overflow-x-auto">
+      <div className="scroll-thin overflow-x-auto">
         <table className="w-full min-w-130 border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-700/50 text-left text-xs text-slate-500">
+            <tr className="border-b border-line text-left text-xs text-fg-subtle">
               <th className="pb-2 pr-4 font-medium">Transaction ID</th>
               <th className="pb-2 pr-4 font-medium">Date</th>
               <th className="pb-2 pr-4 font-medium">Wallet</th>
@@ -46,18 +46,18 @@ export default function TransactionsTable({
             {transactions.map((tx) => (
               <tr
                 key={tx.id}
-                className="border-b border-slate-800/60 transition-colors duration-150 hover:bg-slate-800/20"
+                className="border-b border-line-faint transition-colors duration-150 hover:bg-fg/[0.03]"
               >
-                <td className="py-2.5 pr-4 font-mono text-xs text-slate-300">
+                <td className="py-2.5 pr-4 font-mono text-xs text-fg-muted">
                   {tx.id}
                 </td>
-                <td className="py-2.5 pr-4 font-mono text-xs text-slate-400">
+                <td className="py-2.5 pr-4 font-mono text-xs text-fg-muted">
                   {formatDate(tx.date)}
                 </td>
-                <td className="py-2.5 pr-4 font-mono text-xs text-slate-400">
+                <td className="py-2.5 pr-4 font-mono text-xs text-fg-muted">
                   {tx.wallet}
                 </td>
-                <td className="py-2.5 pr-4 font-mono text-xs text-slate-200">
+                <td className="py-2.5 pr-4 font-mono text-xs text-fg">
                   {tx.amount}
                 </td>
                 <td className="py-2.5">

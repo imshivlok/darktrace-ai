@@ -21,10 +21,10 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-700/50 bg-[#111214]/70 backdrop-blur-xl p-4 sm:p-5 transition-colors duration-200 hover:border-zinc-500/30">
+    <div className="rounded-2xl border border-line bg-card p-4 sm:p-5 shadow-surface transition-colors duration-200 hover:border-line-strong">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-slate-300">{title}</h3>
-        <span className="rounded-full bg-slate-800/70 px-2 py-0.5 font-mono text-xs text-slate-400">
+        <h3 className="text-sm font-medium text-fg">{title}</h3>
+        <span className="rounded-full bg-card-raised px-2 py-0.5 font-mono text-xs text-fg-muted">
           {count}
         </span>
       </div>
@@ -47,14 +47,14 @@ export default function IntelligenceCards({
             key={key.keyId}
             className="flex items-center justify-between gap-2"
           >
-            <span className="truncate font-mono text-xs text-slate-300">
+            <span className="truncate font-mono text-xs text-fg-muted">
               {key.keyId}
             </span>
             <span
               className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
                 key.verified
-                  ? "bg-emerald-500/10 text-emerald-300"
-                  : "bg-slate-700/40 text-slate-400"
+                  ? "bg-ok/10 text-ok"
+                  : "bg-fg/[0.06] text-fg-subtle"
               }`}
             >
               {key.verified ? "verified" : "unverified"}
@@ -70,12 +70,12 @@ export default function IntelligenceCards({
             className="flex items-center justify-between gap-2"
           >
             <span
-              className="truncate font-mono text-xs text-slate-300"
+              className="truncate font-mono text-xs text-fg-muted"
               title={wallet.address}
             >
               {wallet.address.slice(0, 10)}...{wallet.address.slice(-4)}
             </span>
-            <span className="shrink-0 rounded-md bg-zinc-500/10 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300">
+            <span className="shrink-0 rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
               {wallet.currency}
             </span>
           </div>
@@ -88,10 +88,10 @@ export default function IntelligenceCards({
             key={id.value}
             className="flex items-center justify-between gap-2"
           >
-            <span className="truncate font-mono text-xs text-slate-300">
+            <span className="truncate font-mono text-xs text-fg-muted">
               {id.value}
             </span>
-            <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-500">
+            <span className="shrink-0 text-[10px] uppercase tracking-wide text-fg-subtle">
               {id.type}
             </span>
           </div>
@@ -104,10 +104,10 @@ export default function IntelligenceCards({
             key={source.id}
             className="flex items-center justify-between gap-2"
           >
-            <span className="truncate text-xs text-slate-300">
+            <span className="truncate text-xs text-fg-muted">
               {source.name}
             </span>
-            <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-500">
+            <span className="shrink-0 text-[10px] uppercase tracking-wide text-fg-subtle">
               {source.type.replace("_", " ")}
             </span>
           </div>

@@ -38,12 +38,17 @@ export default function FAQ() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h2 className="text-center text-2xl font-semibold tracking-tight text-slate-100 sm:text-3xl">
-        Security &amp; <span className="text-cyan-400">Infrastructure</span>
-      </h2>
-      <p className="mx-auto mt-3 max-w-md text-center text-sm text-slate-400">
-        How DarkTrace protects its scraping, storage, and analysis pipeline.
-      </p>
+      <div className="mb-10 text-center">
+        <div className="font-mono text-xs text-accent uppercase tracking-wider mb-2">
+          Hardened Operations
+        </div>
+        <h2 className="font-display text-4xl sm:text-5xl text-fg tracking-tight">
+          Security &amp; Infrastructure
+        </h2>
+        <p className="mt-3 text-xs text-fg-subtle font-mono">
+          Scraping isolation, failover routing, and zero-egress data integrity.
+        </p>
+      </div>
 
       <div className="mt-10 space-y-3">
         {faqs.map((faq, i) => {
@@ -51,16 +56,15 @@ export default function FAQ() {
           return (
             <div
               key={faq.question}
-              className={`rounded-xl border bg-[#111214]/70 transition-colors duration-200 ${
-                isOpen ? "border-cyan-500/40" : "border-slate-700/50"
-              }`}
+              className={`rounded-2xl border bg-card shadow-surface transition-colors duration-200 ${isOpen ? "border-accent/40" : "border-line hover:border-line-strong"
+                }`}
             >
               <button
                 type="button"
                 onClick={() => setOpenIndex(isOpen ? null : i)}
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                className="group flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left"
               >
-                <span className="text-sm font-medium text-slate-200">
+                <span className="text-sm font-medium text-fg/90 transition-colors group-hover:text-fg">
                   {faq.question}
                 </span>
                 <motion.svg
@@ -72,7 +76,7 @@ export default function FAQ() {
                   strokeLinejoin="round"
                   animate={{ rotate: isOpen ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
-                  className="h-4 w-4 shrink-0 text-slate-500"
+                  className="h-4 w-4 shrink-0 text-accent"
                 >
                   <path d="M6 9l6 6 6-6" />
                 </motion.svg>
@@ -87,7 +91,7 @@ export default function FAQ() {
                     transition={{ duration: 0.25, ease: "easeOut" }}
                     className="overflow-hidden"
                   >
-                    <p className="px-5 pb-4 text-sm leading-relaxed text-slate-400">
+                    <p className="px-5 pb-5 text-sm leading-relaxed text-fg-muted border-t border-line-faint pt-4">
                       {faq.answer}
                     </p>
                   </motion.div>

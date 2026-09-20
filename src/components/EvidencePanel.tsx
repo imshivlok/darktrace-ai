@@ -24,10 +24,10 @@ const evidenceTypeLabel: Record<EvidenceType, string> = {
 };
 
 const confidenceStyles: Record<AttributionConfidence, string> = {
-  low: "text-slate-400 bg-slate-500/10 border-slate-500/30",
-  medium: "text-amber-300 bg-amber-500/10 border-amber-500/30",
-  high: "text-cyan-300 bg-cyan-500/10 border-cyan-500/30",
-  confirmed: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+  low: "text-fg-subtle bg-fg/[0.04] border-line",
+  medium: "text-warn bg-warn/10 border-warn/30",
+  high: "text-accent bg-accent/10 border-accent/30",
+  confirmed: "text-ok bg-ok/10 border-ok/30",
 };
 
 export default function EvidencePanel({
@@ -35,14 +35,14 @@ export default function EvidencePanel({
   attributionScore,
 }: EvidencePanelProps) {
   return (
-    <section className="rounded-2xl border border-slate-700/50 bg-[#111214]/70 backdrop-blur-xl p-4 sm:p-6">
-      <h2 className="mb-4 text-sm font-medium text-slate-300">
+    <section className="rounded-2xl border border-line-faint bg-band/60 p-4 sm:p-6">
+      <h2 className="mb-4 text-sm font-medium text-fg">
         Evidence &amp; reasoning
       </h2>
       <AttributionScore breakdown={attributionScore} />
 
       {evidence.length === 0 ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-fg-subtle">
           No supporting evidence recorded for this actor yet.
         </p>
       ) : (
@@ -50,14 +50,14 @@ export default function EvidencePanel({
           {evidence.map((item) => (
             <li
               key={item.id}
-              className="rounded-xl border border-slate-700/40 bg-slate-900/30 p-4 transition-colors duration-200 hover:border-zinc-500/30"
+              className="rounded-xl border border-line bg-card p-4 transition-colors duration-200 hover:border-line-strong"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-mono text-xs text-slate-300">
+                <span className="font-mono text-xs text-fg-muted">
                   {item.relationshipLabel}
                 </span>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md border border-slate-700/60 bg-slate-800/40 px-2 py-0.5 text-[11px] text-slate-400">
+                  <span className="rounded-md border border-line bg-fg/[0.04] px-2 py-0.5 text-[11px] text-fg-muted">
                     {evidenceTypeLabel[item.evidenceType]}
                   </span>
                   <span
@@ -67,7 +67,7 @@ export default function EvidencePanel({
                   </span>
                 </div>
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              <p className="mt-2 text-sm leading-relaxed text-fg-muted">
                 {item.description}
               </p>
             </li>

@@ -1,70 +1,272 @@
+/* Fonts must be imported before any other rule, otherwise browsers ignore them. */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&family=Instrument+Serif:ital@0;1&display=swap");
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
 
-html,
-body {
-  overflow-x: clip;
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+/* ------------------------------------------------------------------ */
+/*  THEME — "Ultraviolet case file"                                    */
+/*  Blacklight is what forensic teams use to reveal hidden traces, so  */
+/*  the palette is deep ink with one ultraviolet signal colour.        */
+/*  Change the look of the whole site by editing this block only.      */
+/* ------------------------------------------------------------------ */
+@theme {
+  /* Type */
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-display: "Instrument Serif", ui-serif, Georgia, "Times New Roman", serif;
+
+  /* Surfaces (darkest → lightest) */
+  --color-footer: #060609;
+  --color-canvas: #09090e;
+  --color-band: #0e0e15;
+  --color-card: #13131c;
+  --color-card-raised: #1a1a26;
+
+  /* Hairlines — tinted so they read as part of the palette, not as grey */
+  --color-line-faint: rgb(172 168 255 / 0.07);
+  --color-line: rgb(172 168 255 / 0.13);
+  --color-line-strong: rgb(172 168 255 / 0.26);
+
+  /* Text */
+  --color-fg: #f3f1fb;
+  --color-fg-muted: #a8a6bc;
+  --color-fg-subtle: #7f7d96;
+  --color-fg-faint: #6e6d87;
+
+  /* Ultraviolet signal */
+  --color-accent: #9c8cff;        /* text, lines, icons on dark */
+  --color-accent-solid: #6450ec;  /* filled buttons and cards (white text passes AA) */
+  --color-accent-strong: #5340d6; /* hover for filled */
+
+  /* Status colours for data (confidence, verification, transactions).
+     Used sparingly — the ultraviolet accent stays the brand signal. */
+  --color-ok: #5fd3a5;
+  --color-warn: #e9b949;
+  --color-danger: #f2717f;
+  --color-info: #6cc4f0;
+
+  /* Elevation */
+  --shadow-surface:
+    inset 0 1px 0 rgb(255 255 255 / 0.045),
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 18px 40px -18px rgb(0 0 0 / 0.65);
+  --shadow-lift:
+    inset 0 1px 0 rgb(255 255 255 / 0.07),
+    0 2px 4px rgb(0 0 0 / 0.5),
+    0 28px 60px -22px rgb(0 0 0 / 0.8);
+  --shadow-pop:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 24px 56px -14px rgb(0 0 0 / 0.85);
+  --shadow-glow: 0 14px 48px -14px rgb(100 80 236 / 0.55);
+  --shadow-search:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 14px 44px -14px rgb(0 0 0 / 0.75);
+  --shadow-search-focus:
+    0 0 0 4px rgb(156 140 255 / 0.1),
+    0 18px 64px -14px rgb(100 80 236 / 0.5);
 }
 
-.main {
-  min-height: 100vh;
-  background-color: #111214;
+/* Legacy variables kept so any other page using them follows the new palette */
+:root {
+  color-scheme: dark;
+  --bg-primary: #09090e;
+  --bg-surface: #13131c;
+  --border-subtle: rgb(172 168 255 / 0.13);
+  --border-active: rgb(156 140 255 / 0.45);
 }
 
+@layer base {
+  html,
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  code {
+    font-family: var(--font-mono);
+  }
+
+  ::selection {
+    background: rgb(156 140 255 / 0.32);
+    color: #fff;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* The search input draws its own focus state on the surrounding bar */
+  input:focus-visible {
+    outline: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--color-canvas);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #24243a;
+    border-radius: 999px;
+    border: 2px solid var(--color-canvas);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #34344f;
+  }
+}
+
+/* Display headings use a single-weight serif */
+@layer components {
+  .font-display {
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Subtle architectural grid lines */
+.editorial-grid {
+  background-image:
+    linear-gradient(to right, rgb(172 168 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(172 168 255 / 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Technical hairline borders */
+.hairline-border {
+  border: 1px solid var(--color-line);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Hero — the one atmospheric moment: a pool of ultraviolet light     */
+/*  behind the search bar, over a grid that fades out at the edges.    */
+/* ------------------------------------------------------------------ */
+.hero-uv {
+  isolation: isolate;
+  background-image:
+    radial-gradient(55% 45% at 50% 46%, rgb(108 88 240 / 0.2), transparent 72%),
+    radial-gradient(90% 60% at 50% 0%, rgb(156 140 255 / 0.06), transparent 70%);
+}
+
+.hero-uv::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgb(172 168 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(172 168 255 / 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 46%, #000 10%, transparent 75%);
+  mask-image: radial-gradient(ellipse 60% 55% at 50% 46%, #000 10%, transparent 75%);
+}
+
+/* Footer — a thin ultraviolet hairline and faint glow along the top edge,
+   echoing the hero so the page ends in the same light it opens with. */
+.footer-uv {
+  background-image: radial-gradient(60% 240px at 50% 0%, rgb(108 88 240 / 0.12), transparent 75%);
+}
+
+.footer-uv::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  width: min(560px, 70%);
+  height: 1px;
+  transform: translateX(-50%);
+  background: linear-gradient(to right, transparent, rgb(156 140 255 / 0.6), transparent);
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Investigation console                                              */
+/* ------------------------------------------------------------------ */
+
+/* A faint pool of ultraviolet light at the top of the dashboard pane */
+.console-glow {
+  background-image: radial-gradient(70% 320px at 50% 0%, rgb(108 88 240 / 0.11), transparent 75%);
+  background-repeat: no-repeat;
+}
+
+/* Slim scrollbars for the three independently scrolling panes */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #2a2a40 transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: #2a2a40;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+
+/* Assistant "thinking" dots */
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-2px); }
+}
+.typing-dot {
+  animation: typing-dot 1.1s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* New chat messages ease in (answers an action, so it stays) */
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.msg-in {
+  animation: msg-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dot,
+  .msg-in {
+    animation: none;
+  }
+}
+
+/* "Export Report" prints the dossier: drop the app chrome, let the
+   dashboard flow across pages, and keep the dark theme's colours. */
 @media print {
-  aside,
-  form[role="search"],
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   .no-print {
     display: none !important;
   }
-
-  html,
-  body,
-  .main,
-  section {
-    background: #08090a !important;
-    color: #e2e8f0 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
-
-  * {
-    color: #e2e8f0 !important;
-    border-color: #334155 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
-  section {
-    break-inside: avoid;
-  }
-
-  /* Graph: silver text/lines on black, keep node accent colors as-is */
-  svg text {
-    fill: #cbd5e1 !important;
-  }
-
-  svg line {
-    stroke: #64748b !important;
-  }
-
-  svg circle {
-    stroke-width: 2 !important;
-  }
-
-  /* Force the legend row to always show in print, regardless of the
-     screen-size-based "hidden sm:flex" classes on it */
-  .relationship-legend {
-    display: flex !important;
+  .print-static {
+    position: static !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
   }
 }
 
-@keyframes sidebarIn {
+/* One orchestrated entrance on page load: heading, then search bar */
+@keyframes hero-rise {
   from {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -72,11 +274,16 @@ body {
   }
 }
 
-@keyframes flowDown {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100%);
+.hero-rise {
+  animation: hero-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.hero-rise-delay {
+  animation: hero-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-rise,
+  .hero-rise-delay {
+    animation: none;
   }
 }

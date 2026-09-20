@@ -24,26 +24,26 @@ export default function Timeline({ events, sources = [] }: TimelineProps) {
   const sourceName = (id?: string) => sources.find((s) => s.id === id)?.name;
 
   return (
-    <section className="rounded-2xl border border-slate-700/50 bg-[#111214]/70 backdrop-blur-xl p-4 sm:p-6">
-      <h2 className="mb-5 text-sm font-medium text-slate-300">Timeline</h2>
+    <section className="rounded-2xl border border-line-faint bg-band/60 p-4 sm:p-6">
+      <h2 className="mb-5 text-sm font-medium text-fg">Timeline</h2>
 
-      <ol className="relative border-l border-slate-700/50 pl-6">
+      <ol className="relative border-l border-line pl-6">
         {sorted.map((event) => (
           <li key={event.id} className="mb-6 last:mb-0">
-            <span className="absolute -left-1.25 mt-1.5 h-2.5 w-2.5 rounded-full border-2 border-[#111214] bg-zinc-400" />
+            <span className="absolute -left-1.25 mt-1.5 h-2.5 w-2.5 rounded-full border-2 border-band bg-accent" />
             <div className="flex flex-wrap items-baseline gap-x-3">
-              <time className="font-mono text-xs text-slate-500">
+              <time className="font-mono text-xs text-fg-subtle">
                 {formatDate(event.date)}
               </time>
-              <h3 className="text-sm font-medium text-slate-200">
+              <h3 className="text-sm font-medium text-fg">
                 {event.title}
               </h3>
             </div>
-            <p className="mt-1 text-sm leading-relaxed text-slate-400">
+            <p className="mt-1 text-sm leading-relaxed text-fg-muted">
               {event.description}
             </p>
             {sourceName(event.sourceId) && (
-              <span className="mt-1 inline-block text-[11px] text-slate-500">
+              <span className="mt-1 inline-block text-[11px] text-fg-subtle">
                 Source: {sourceName(event.sourceId)}
               </span>
             )}
