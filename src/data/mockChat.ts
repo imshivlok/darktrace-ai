@@ -93,18 +93,17 @@ export function buildCaseSummary(data: InvestigationCase): string {
   ];
   if (topFinding) {
     points.push(
-      `${infrastructure.length} infrastructure findings — strongest is ${lowerFirst(misconfigLabel[topFinding.misconfigurationType])} (${topFinding.confidence})${
-        topFinding.likelyOriginDomain
-          ? `, pointing to ${topFinding.likelyOriginDomain}`
-          : ""
+      `${infrastructure.length} infrastructure findings — strongest is ${lowerFirst(misconfigLabel[topFinding.misconfigurationType])} (${topFinding.confidence})${topFinding.likelyOriginDomain
+        ? `, pointing to ${topFinding.likelyOriginDomain}`
+        : ""
       }`,
     );
   }
   points.push(
     flagged.length > 0
       ? `${flagged.length} flagged transaction${flagged.length > 1 ? "s" : ""} (${flagged
-          .map((t) => t.amount)
-          .join(", ")}) out of ${transactions.length} tracked`
+        .map((t) => t.amount)
+        .join(", ")}) out of ${transactions.length} tracked`
       : `No flagged transactions across ${transactions.length} tracked`,
   );
 
@@ -128,10 +127,10 @@ export function buildNotFoundReply(query: string): string {
 export function suggestionsFor(found: boolean): string[] {
   return found
     ? [
-        "Summarize this dossier",
-        "Explain the attribution score",
-        "Show flagged transactions",
-      ]
+      "Summarize this dossier",
+      "Explain the attribution score",
+      "Show flagged transactions",
+    ]
     : ["What can I search for?"];
 }
 
@@ -179,12 +178,11 @@ export function buildFakeReply(
     return `${infrastructure.length} infrastructure findings on the hidden service:\n${bullets(
       infrastructure.map(
         (f) =>
-          `**${misconfigLabel[f.misconfigurationType]}** (${f.confidence})${
-            f.likelyOriginDomain || f.likelyOriginIp
-              ? ` — likely origin ${[f.likelyOriginDomain, f.likelyOriginIp]
-                  .filter(Boolean)
-                  .join(" / ")}`
-              : ""
+          `**${misconfigLabel[f.misconfigurationType]}** (${f.confidence})${f.likelyOriginDomain || f.likelyOriginIp
+            ? ` — likely origin ${[f.likelyOriginDomain, f.likelyOriginIp]
+              .filter(Boolean)
+              .join(" / ")}`
+            : ""
           }`,
       ),
     )}`;
@@ -199,10 +197,10 @@ export function buildFakeReply(
     const flaggedLine =
       flagged.length > 0
         ? `\n\nFlagged:\n${bullets(
-            flagged.map(
-              (t) => `${t.amount} from ${t.wallet} on ${fmtDate(t.date)}`,
-            ),
-          )}`
+          flagged.map(
+            (t) => `${t.amount} from ${t.wallet} on ${fmtDate(t.date)}`,
+          ),
+        )}`
         : "\n\nNothing is flagged right now.";
     return `The actor controls ${actor.wallets.length} wallets: ${walletLine}. ${transactions.length} transactions are tracked, ${transactions.filter((t) => t.status === "confirmed").length} confirmed and ${transactions.filter((t) => t.status === "pending").length} pending.${flaggedLine}`;
   }
@@ -213,13 +211,13 @@ export function buildFakeReply(
     return `${actor.pgpKeys.length} PGP keys are tied to this actor:\n${bullets(
       actor.pgpKeys.map(
         (k) =>
-          `**${k.keyId}** — created ${fmtDate(k.createdAt)}, ${k.verified ? "verified" : "unverified"}`,
+          `**${k.keyId}** — created ${k.createdAt ? fmtDate(k.createdAt) : "unknown"
+          }, ${k.verified ? "verified" : "unverified"}`,
       ),
-    )}${
-      sharedKey
+    )}${sharedKey
         ? `\n\nKey material links identities: ${sharedKey.relationshipLabel} (${sharedKey.confidence} confidence).`
         : ""
-    }`;
+      }`;
   }
 
   // Aliases & connected entities
@@ -227,11 +225,10 @@ export function buildFakeReply(
     const entities = data.relationships.nodes.filter((n) => n.type === "entity");
     return `${actor.handle} is known under ${actor.aliases.length} aliases:\n${bullets(
       actor.aliases.map((a) => `**${a.handle}** on ${a.platform}`),
-    )}${
-      entities.length > 0
+    )}${entities.length > 0
         ? `\n\nConnected entity: **${entities.map((e) => e.label).join(", ")}**. See the Relationship Map tab for the links.`
         : ""
-    }`;
+      }`;
   }
 
   // Timeline

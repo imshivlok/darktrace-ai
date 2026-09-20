@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import zortexPhoto from "../assets/zortex.jpeg";
 import FAQ from "../components/FAQ";
 
@@ -131,8 +131,6 @@ export default function Home({ onSearchSubmit }: HomeProps) {
   const [modelOpen, setModelOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("Quick");
   const modelRef = useRef<HTMLDivElement>(null);
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
