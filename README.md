@@ -1,75 +1,137 @@
-# React + TypeScript + Vite
+# DarkTrace AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<p align="center">
+  <img src="src/assets/icon.png" width="90" alt="DarkTrace AI Logo">
+</p>
 
-Currently, two official plugins are available:
+<h2 align="center">DarkTrace AI</h2>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+<p align="center">
+  AI-powered dark web threat intelligence and investigation platform.
+</p>
 
-## React Compiler
+<p align="center">
+  <img src="https://img.shields.io/badge/AI-Threat_Intelligence-7C3AED?style=flat-square">
+  <img src="https://img.shields.io/badge/Focus-Dark_Web_Analysis-111111?style=flat-square">
+  <img src="https://img.shields.io/badge/Interface-React-61DAFB?style=flat-square&logo=react&logoColor=black">
+  <img src="https://img.shields.io/badge/Status-Prototype-orange?style=flat-square">
+</p>
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Overview
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+DarkTrace AI is a prototype threat intelligence platform designed to support the investigation and analysis of dark web activity.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+The platform explores how publicly accessible threat intelligence signals—such as PGP keys, writing stylometry, and relationship graphs—can be used to identify connections between threat actors and organize investigative leads.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+DarkTrace AI aims to present complex intelligence signals through a clean, centralized interface, helping analysts explore relationships and patterns across collected data.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Key Features
 
+* **Threat Actor Analysis** — Organize and examine available threat actor intelligence.
+* **PGP Key Correlation** — Explore PGP key information as a potential linkage signal between identities or accounts.
+* **Stylometric Analysis** — Examine writing-style similarities across text samples.
+* **Relationship Graphs** — Visualize connections between entities, accounts, and intelligence indicators.
+* **Dark Web Intelligence** — Support the analysis of dark web-related data and investigative leads.
+* **Unified Dashboard** — Present intelligence findings through a streamlined interface.
+
+> DarkTrace AI is a prototype. The availability, accuracy, and completeness of these capabilities depend on the implemented modules and underlying data sources. Correlations are investigative leads, not proof of identity.
+
+## Technology Stack
+
+| Technology            | Purpose                                  |
+| --------------------- | ---------------------------------------- |
+| React                 | Frontend application                     |
+| TypeScript            | Type-safe application development        |
+| Vite                  | Development server and build tooling     |
+| Tailwind CSS          | UI styling                               |
+| AI / Analysis Modules | Intelligence analysis, where implemented |
+
+*Update this section to reflect the exact technologies and services used in your current implementation.*
+
+## Getting Started
+
+### Prerequisites
+
+* Node.js
+* pnpm
+* Git
+
+### Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone <repository-url>
+   ```
+
+2. Navigate to the project directory:
+
+   ```bash
+   cd darktrace-ai
+   ```
+
+3. Install dependencies:
+
+   ```bash
+   pnpm install
+   ```
+
+4. Start the development server:
+
+   ```bash
+   pnpm dev
+   ```
+
+5. Open the local URL provided by Vite in your browser.
+
+### Production Build
+
+To create a production build:
+
+```bash
+pnpm build
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+To preview the production build locally:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+pnpm preview
 ```
+
+## Project Status
+
+DarkTrace AI is under development as a prototype. Features shown in the interface may represent planned, simulated, or partially implemented functionality.
+
+The project should not be considered a production-ready attribution system or a standalone source of verified threat actor identities.
+
+## Responsible Use
+
+DarkTrace AI is intended for cybersecurity research, threat intelligence analysis, and authorized investigations.
+
+* Treat analytical matches as leads requiring independent verification.
+* Do not interpret stylometric or graph-based similarity as definitive attribution.
+* Respect privacy, applicable laws, and the terms of data sources.
+* Avoid using unverified intelligence to make claims about real individuals.
+
+## Contributing
+
+Contributions, suggestions, and feedback are welcome.
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Make your changes.
+4. Submit a pull request describing your contribution.
+
+## Author
+
+**Shivlok Sharma**
+
+GitHub: [@imshivlok](https://github.com/imshivlok)
+
+---
+
+<p align="center">
+  Built for exploring the intersection of AI and cyber threat intelligence.
+</p>
