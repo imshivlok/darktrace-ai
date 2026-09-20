@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import zortexPhoto from "../assets/zortex.jpeg";
+import dtai from "../assets/dtai.png";
 import FAQ from "../components/FAQ";
 
 interface HomeProps {
@@ -165,7 +166,7 @@ export default function Home({ onSearchSubmit }: HomeProps) {
 
           <div className="flex items-center gap-12">
             <Link to="/" className="flex items-center gap-3">
-              <img src="../assets/dtai.png" alt="Logo" className="h-8 w-8 object-contain" />
+              <img src={dtai} alt="Logo" className="h-8 w-8 object-contain" />
               <span className="text-base font-semibold tracking-tight text-fg">
                 DarkTrace <span className="text-fg-subtle font-normal">AI</span>
               </span>
@@ -429,7 +430,7 @@ export default function Home({ onSearchSubmit }: HomeProps) {
 
               {/* Overlap Core Center */}
               <div className="absolute left-1/2 -translate-x-1/2 z-40 flex flex-col items-center justify-center w-36 h-36 rounded-[28px] border border-accent/50 bg-canvas shadow-lift">
-                <img src="../assets/dtai.png" alt="DarkTrace AI" className="w-10 h-10 mb-2" />
+                <img src={dtai} alt="DarkTrace AI" className="w-10 h-10 mb-2" />
                 <span className="text-[10px] font-bold text-fg tracking-widest uppercase">Engine</span>
               </div>
             </div>
@@ -755,7 +756,7 @@ export default function Home({ onSearchSubmit }: HomeProps) {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 border-b border-line-faint pb-14">
             <div>
               <div className="flex items-center gap-3">
-                <img src="../assets/dtai.png" alt="Logo" className="h-8 w-8 object-contain" />
+                <img src={dtai} alt="Logo" className="h-8 w-8 object-contain" />
                 <span className="text-lg font-semibold tracking-tight text-fg">
                   DarkTrace <span className="text-fg-subtle font-normal">AI</span>
                 </span>
