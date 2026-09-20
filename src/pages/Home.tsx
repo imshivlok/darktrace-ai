@@ -522,7 +522,7 @@ export default function Home({ onSearchSubmit }: HomeProps) {
       <section id="architecture" className="border-t border-line-faint py-24 px-6 lg:px-10">
         <div className="mx-auto max-w-[1400px]">
           <h2 className="text-center font-display text-5xl sm:text-6xl tracking-tight text-fg mb-16">
-            Cloud &amp; Infrastructure Architecture
+            Cloud &amp; Infrastructure Architecturee
           </h2>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 w-full relative">
