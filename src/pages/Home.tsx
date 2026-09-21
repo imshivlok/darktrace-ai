@@ -1,11 +1,37 @@
-import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useState, useRef, useEffect, useMemo, type ComponentType } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import zortexPhoto from "../assets/zortex.jpeg";
 import dtai from "../assets/dtai.png";
 import FAQ from "../components/FAQ";
+import { joinDictation, useSpeechInput } from "../hooks/useSpeechInput";
+import { currentUser, defaultQueryHistory } from "../data/mockChat";
+import {
+  IconBook,
+  IconChevronRight,
+  IconClipboard,
+  IconClose,
+  IconCoin,
+  IconDots,
+  IconGlobe,
+  IconGraph,
+  IconHelp,
+  IconHistory,
+  IconKey,
+  IconLogout,
+  IconMail,
+  IconMic,
+  IconPaperclip,
+  IconPen,
+  IconPlus,
+  IconSettings,
+  IconUser,
+  IconWallet,
+} from "../components/icons";
 
 interface HomeProps {
   onSearchSubmit: (query: string) => void;
+  /** Called by "Log out" in the profile menu. Wire this to your auth. */
+  onLogout?: () => void;
 }
 
 const CAPABILITIES = [
@@ -124,9 +150,115 @@ const AI_MODELS = [
   { id: "Max", desc: "Complex problem solving" },
 ];
 
-export default function Home({ onSearchSubmit }: HomeProps) {
+type IconType = ComponentType<{ className?: string }>;
+
+// Quick-fill tags under the search bar. Each example resolves to the demo case.
+const SEARCH_TAGS: { label: string; example: string; icon: IconType }[] = [
+  { label: "PGP key", example: "0x9F3A21BC", icon: IconKey },
+  { label: "Alias", example: "shadowfox77", icon: IconUser },
+  { label: "Wallet", example: "bc1q9f2xk3llq7z8m4v2p0e6a3s9d7f1g2h3j4k5l", icon: IconWallet },
+  { label: "Crypto", example: "0x8f4B2eC1a9D3f6C0b1A2e3D4f5A6b7C8d9E0f1A2", icon: IconCoin },
+  { label: "Email", example: "sf77.contact@protonmail.com", icon: IconMail },
+  { label: "Onion domain", example: "fox-market-mirror.onion", icon: IconGlobe },
+];
+
+// Tools in the "+" menu. Picking one adds a chip to the search bar and opens
+// the matching tab of the investigation page (?view=...).
+const SEARCH_TOOLS = {
+  wallet: { label: "Wallet trace", placeholder: "Paste a wallet address", view: "transactions", icon: IconWallet },
+  onion: { label: "Onion scan", placeholder: "Enter an .onion domain", view: "infrastructure", icon: IconGlobe },
+  style: { label: "Style match", placeholder: "Enter a handle or alias to compare", view: "evidence", icon: IconPen },
+  graph: { label: "Alias graph", placeholder: "Enter a handle, alias or PGP key", view: "graph", icon: IconGraph },
+} as const;
+type ToolKey = keyof typeof SEARCH_TOOLS;
+
+// Profile menu. My account / Account settings need routes in your app;
+// Documentation and Help & feedback scroll to sections on this page.
+const PROFILE_ITEMS: { id: "account" | "settings" | "docs" | "help"; label: string; icon: IconType }[] = [
+  { id: "account", label: "My account", icon: IconUser },
+  { id: "settings", label: "Account settings", icon: IconSettings },
+  { id: "docs", label: "Documentation", icon: IconBook },
+  { id: "help", label: "Help & feedback", icon: IconHelp },
+];
+
+const MENU_ITEM =
+  "flex w-full items-center gap-3.5 rounded-xl px-3.5 py-2.5 text-left text-[15px] text-fg transition-colors hover:bg-fg/[0.07]";
+const MENU_ICON = "h-5 w-5 shrink-0 text-fg-muted";
+const SUB_ITEM =
+  "flex w-full items-center gap-3 rounded-xl py-2 pl-[52px] pr-3.5 text-left text-sm text-fg-muted transition-colors hover:bg-fg/[0.07] hover:text-fg";
+
+const HISTORY_KEY = "darktrace.queryHistory";
+
+function readRecentQueries(): string[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const list = parsed.filter(
+          (q): q is string => typeof q === "string" && q.trim() !== "",
+        );
+        if (list.length > 0) return list.slice(0, 5);
+      }
+    }
+  } catch {
+    /* fall through to the seed */
+  }
+  return defaultQueryHistory.slice(0, 5);
+}
+
+/** First wallet, onion domain, email or key ID in a text file; else its first line. */
+function extractIdentifier(text: string): string | null {
+  const sample = text.slice(0, 200_000);
+  const patterns = [
+    /\b0x[0-9a-fA-F]{40}\b/, // Ethereum address
+    /\bbc1[a-z0-9]{25,60}\b/, // Bitcoin (bech32)
+    /\b[a-z0-9-]{4,}\.onion\b/i, // onion domain
+    /\b[\w.+-]+@[\w-]+\.[\w.-]+\b/, // email
+    /\b0x[0-9A-Fa-f]{8,16}\b/, // PGP key ID
+  ];
+  for (const re of patterns) {
+    const m = sample.match(re);
+    if (m) return m[0];
+  }
+  const line = sample
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find((l) => l !== "" && !l.startsWith("-----"));
+  return line ? line.slice(0, 200) : null;
+}
+
+export default function Home({ onSearchSubmit, onLogout }: HomeProps) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [micActive, setMicActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Voice input (device microphone -> text in the search box)
+  const dictationBase = useRef("");
+  const speech = useSpeechInput((spoken) =>
+    setQuery(joinDictation(dictationBase.current, spoken)),
+  );
+
+  // "+" menu, search tool chip, profile menu
+  const [plusOpen, setPlusOpen] = useState(false);
+  const [expanded, setExpanded] = useState<"recent" | "more" | null>(null);
+  const [tool, setTool] = useState<ToolKey | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const plusRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const activeTool = tool ? SEARCH_TOOLS[tool] : null;
+  const ToolIcon = activeTool?.icon;
+  const recentQueries = useMemo(() => (plusOpen ? readRecentQueries() : []), [plusOpen]);
+
+  // Short status line under the tags (file / clipboard results)
+  const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [notice]);
+  const message = speech.error ? { text: speech.error, error: true } : notice;
 
   // Custom Dropdown State
   const [modelOpen, setModelOpen] = useState(false);
@@ -135,26 +267,115 @@ export default function Home({ onSearchSubmit }: HomeProps) {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (modelRef.current && !modelRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (modelRef.current && !modelRef.current.contains(target)) setModelOpen(false);
+      if (plusRef.current && !plusRef.current.contains(target)) setPlusOpen(false);
+      if (profileRef.current && !profileRef.current.contains(target)) setProfileOpen(false);
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") {
         setModelOpen(false);
+        setPlusOpen(false);
+        setProfileOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
-    onSearchSubmit(query.trim());
+    const q = query.trim();
+    if (!q) return;
+    speech.cancel();
+    if (activeTool) {
+      navigate(`/investigation?q=${encodeURIComponent(q)}&view=${activeTool.view}`);
+    } else {
+      onSearchSubmit(q);
+    }
   };
 
   const handleMicClick = () => {
-    setMicActive(!micActive);
+    if (!speech.listening) dictationBase.current = query;
+    speech.toggle();
   };
 
   const scrollToId = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const applyTag = (example: string) => {
+    setQuery(example);
+    inputRef.current?.focus();
+  };
+
+  const chooseTool = (key: ToolKey) => {
+    setTool(key);
+    setPlusOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPlusOpen(false);
+    if (file.size > 2_000_000) {
+      setNotice({ text: `${file.name} is too large. Keep it under 2 MB.`, error: true });
+      return;
+    }
+    try {
+      const identifier = extractIdentifier(await file.text());
+      if (identifier) {
+        setQuery(identifier);
+        setNotice({ text: `Filled from ${file.name}`, error: false });
+        inputRef.current?.focus();
+      } else {
+        setNotice({ text: `No identifier found in ${file.name}`, error: true });
+      }
+    } catch {
+      setNotice({ text: `Couldn't read ${file.name}`, error: true });
+    }
+  };
+
+  const pasteFromClipboard = async () => {
+    setPlusOpen(false);
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+      if (!text) {
+        setNotice({ text: "The clipboard is empty", error: true });
+        return;
+      }
+      setQuery(text.split(/\r?\n/)[0].slice(0, 300));
+      inputRef.current?.focus();
+    } catch {
+      setNotice({ text: "Couldn't read the clipboard. Paste with Ctrl+V instead.", error: true });
+    }
+  };
+
+  const runProfileAction = (id: (typeof PROFILE_ITEMS)[number]["id"] | "logout") => {
+    setProfileOpen(false);
+    switch (id) {
+      case "account":
+        navigate("/account");
+        break;
+      case "settings":
+        navigate("/settings");
+        break;
+      case "docs":
+        scrollToId("references");
+        break;
+      case "help":
+        scrollToId("faq");
+        break;
+      case "logout":
+        onLogout?.();
+        break;
+    }
   };
 
   return (
@@ -206,13 +427,66 @@ export default function Home({ onSearchSubmit }: HomeProps) {
             </nav>
           </div>
 
-          <div className="flex items-center gap-4 text-base font-medium text-fg">
-            Hi, Shivlok
-            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-card-raised text-fg-muted">
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-              </svg>
-            </div>
+          <div className="relative" ref={profileRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setProfileOpen((o) => !o);
+                setPlusOpen(false);
+                setModelOpen(false);
+              }}
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+              className="flex items-center gap-4 rounded-full py-1 pl-4 pr-1 text-base font-medium text-fg transition-colors hover:bg-fg/[0.05]"
+            >
+              Hi, Shivlok
+              <span className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-card-raised text-fg-muted">
+                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                </svg>
+              </span>
+            </button>
+
+            {profileOpen && (
+              <div
+                role="menu"
+                aria-label="Account"
+                className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-line bg-card-raised p-2 shadow-pop"
+              >
+                <div className="flex items-center gap-3 px-3.5 py-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line bg-card text-xs font-medium text-fg-muted">
+                    {currentUser.initials}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-fg">{currentUser.name}</p>
+                    <p className="truncate text-xs text-fg-subtle">{currentUser.org}</p>
+                  </div>
+                </div>
+                <div className="mx-3 my-1.5 h-px bg-line" />
+                {PROFILE_ITEMS.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => runProfileAction(item.id)}
+                    className={MENU_ITEM}
+                  >
+                    <item.icon className={MENU_ICON} />
+                    {item.label}
+                  </button>
+                ))}
+                <div className="mx-3 my-1.5 h-px bg-line" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => runProfileAction("logout")}
+                  className={MENU_ITEM}
+                >
+                  <IconLogout className={MENU_ICON} />
+                  Log out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -225,23 +499,146 @@ export default function Home({ onSearchSubmit }: HomeProps) {
             What are we looking for?
           </h1>
 
-          <form onSubmit={handleSearch} className="hero-rise-delay mx-auto max-w-3xl">
+          <form onSubmit={handleSearch} className="hero-rise-delay relative z-20 mx-auto max-w-3xl">
             <div className="relative flex w-full items-center rounded-full bg-card-raised/80 px-4 py-3.5 ring-1 ring-line shadow-search backdrop-blur-xl transition-all focus-within:bg-card-raised focus-within:ring-accent/60 focus-within:shadow-search-focus">
-              <button
-                type="button"
-                className="ml-2 mr-3 text-fg-muted hover:text-fg transition-colors cursor-default"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
+              <div className="relative ml-2 mr-3" ref={plusRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlusOpen((o) => !o);
+                    setExpanded(null);
+                    setModelOpen(false);
+                    setProfileOpen(false);
+                  }}
+                  aria-haspopup="menu"
+                  aria-expanded={plusOpen}
+                  aria-label="Add to search"
+                  className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-fg/[0.07] hover:text-fg ${
+                    plusOpen ? "bg-fg/[0.07] text-fg" : "text-fg-muted"
+                  }`}
+                >
+                  <IconPlus className={`h-6 w-6 transition-transform duration-200 ${plusOpen ? "rotate-45" : ""}`} />
+                </button>
+
+                {plusOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Add to search"
+                    className="absolute -left-3 top-full z-50 mt-4 w-72 rounded-3xl border border-line bg-card-raised p-2.5 text-left shadow-pop"
+                  >
+                    <button type="button" role="menuitem" onClick={() => fileRef.current?.click()} className={MENU_ITEM}>
+                      <IconPaperclip className={MENU_ICON} />
+                      Upload file
+                    </button>
+                    <button type="button" role="menuitem" onClick={pasteFromClipboard} className={MENU_ITEM}>
+                      <IconClipboard className={MENU_ICON} />
+                      Paste from clipboard
+                    </button>
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      aria-expanded={expanded === "recent"}
+                      onClick={() => setExpanded(expanded === "recent" ? null : "recent")}
+                      className={MENU_ITEM}
+                    >
+                      <IconHistory className={MENU_ICON} />
+                      <span className="flex-1">Recent searches</span>
+                      <IconChevronRight className={`h-4 w-4 text-fg-muted transition-transform ${expanded === "recent" ? "rotate-90" : ""}`} />
+                    </button>
+                    {expanded === "recent" &&
+                      recentQueries.map((q) => (
+                        <button
+                          key={q}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setQuery(q);
+                            setPlusOpen(false);
+                            inputRef.current?.focus();
+                          }}
+                          className={`${SUB_ITEM} font-mono text-[13px]`}
+                        >
+                          <span className="truncate">{q}</span>
+                        </button>
+                      ))}
+
+                    <div className="mx-3 my-2 h-px bg-line" />
+
+                    <button type="button" role="menuitem" onClick={() => chooseTool("wallet")} className={MENU_ITEM}>
+                      <IconWallet className={MENU_ICON} />
+                      Wallet trace
+                    </button>
+                    <button type="button" role="menuitem" onClick={() => chooseTool("onion")} className={MENU_ITEM}>
+                      <IconGlobe className={MENU_ICON} />
+                      Onion scan
+                    </button>
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      aria-expanded={expanded === "more"}
+                      onClick={() => setExpanded(expanded === "more" ? null : "more")}
+                      className={MENU_ITEM}
+                    >
+                      <IconDots className={MENU_ICON} />
+                      <span className="flex-1">More tools</span>
+                      <IconChevronRight className={`h-4 w-4 text-fg-muted transition-transform ${expanded === "more" ? "rotate-90" : ""}`} />
+                    </button>
+                    {expanded === "more" && (
+                      <>
+                        <button type="button" role="menuitem" onClick={() => chooseTool("style")} className={SUB_ITEM}>
+                          <IconPen className="h-4 w-4" />
+                          Style match
+                        </button>
+                        <button type="button" role="menuitem" onClick={() => chooseTool("graph")} className={SUB_ITEM}>
+                          <IconGraph className="h-4 w-4" />
+                          Alias graph
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <input
+                ref={fileRef}
+                type="file"
+                accept=".txt,.csv,.json,.log,.md,.asc,.pgp,text/plain"
+                onChange={handleFile}
+                className="hidden"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+
+              {activeTool && ToolIcon && (
+                <span className="mr-2 flex shrink-0 items-center gap-1.5 rounded-full bg-accent/10 py-1 pl-3 pr-1.5 text-sm text-accent ring-1 ring-accent/30">
+                  <ToolIcon className="h-4 w-4" />
+                  {activeTool.label}
+                  <button
+                    type="button"
+                    onClick={() => setTool(null)}
+                    aria-label={`Remove ${activeTool.label}`}
+                    className="flex h-5 w-5 items-center justify-center rounded-full transition-colors hover:bg-accent/20"
+                  >
+                    <IconClose className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              )}
+
+              <input
+                ref={inputRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask DarkTrace"
-                className="flex-1 bg-transparent text-lg text-fg placeholder:text-fg-faint focus:outline-none"
+                placeholder={
+                  speech.listening
+                    ? "Listening…"
+                    : activeTool
+                      ? activeTool.placeholder
+                      : "Ask DarkTrace"
+                }
+                className="min-w-0 flex-1 bg-transparent text-lg text-fg placeholder:text-fg-faint focus:outline-none"
               />
 
               <div className="flex items-center gap-1 pr-2">
@@ -287,16 +684,55 @@ export default function Home({ onSearchSubmit }: HomeProps) {
                 <button
                   type="button"
                   onClick={handleMicClick}
-                  className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ml-1 ${micActive ? "bg-accent-solid text-white" : "text-fg-muted hover:bg-fg/[0.07] hover:text-fg"
+                  aria-pressed={speech.listening}
+                  aria-label={speech.listening ? "Stop voice input" : "Start voice input"}
+                  title={
+                    speech.supported
+                      ? speech.listening
+                        ? "Stop voice input"
+                        : "Voice input"
+                      : "Voice input isn't supported in this browser"
+                  }
+                  className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-colors ml-1 ${speech.listening ? "bg-accent-solid text-white" : "text-fg-muted hover:bg-fg/[0.07] hover:text-fg"
                     }`}
                 >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
+                  {speech.listening && (
+                    <span
+                      className="absolute inset-0 animate-ping rounded-full bg-accent/40 motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <IconMic className="relative h-5 w-5" />
                 </button>
               </div>
             </div>
           </form>
+
+          <div className="hero-rise-delay mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-2">
+            <span className="mr-1 font-mono text-[11px] uppercase tracking-widest text-fg-subtle">
+              Try
+            </span>
+            {SEARCH_TAGS.map((tag) => (
+              <button
+                key={tag.label}
+                type="button"
+                onClick={() => applyTag(tag.example)}
+                title={`e.g. ${tag.example}`}
+                className="flex items-center gap-2 rounded-full border border-line bg-card/60 px-3.5 py-1.5 text-sm text-fg-muted backdrop-blur transition-colors hover:border-accent/50 hover:text-fg"
+              >
+                <tag.icon className="h-4 w-4 text-accent" />
+                {tag.label}
+              </button>
+            ))}
+          </div>
+
+          <p
+            role="status"
+            aria-live="polite"
+            className={`mt-4 min-h-5 text-xs ${message?.error ? "text-danger" : "text-fg-subtle"}`}
+          >
+            {message?.text}
+          </p>
         </div>
       </section>
 

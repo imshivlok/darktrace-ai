@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import ActorHeader from "../components/ActorHeader";
 import IntelligenceCards from "../components/IntelligenceCards";
@@ -10,6 +11,8 @@ import TransactionsTable from "../components/TransactionsTable";
 import SourcesPanel from "../components/SourcesPanel";
 import ExportToolbar from "../components/ExportToolbar";
 import DashboardStats from "../components/DashboardStats";
+import DashboardSkeleton from "../components/DashboardSkeleton";
+import SearchProgress from "../components/SearchProgress";
 import ConsoleSidebar from "../components/ConsoleSidebar";
 import ChatPanel from "../components/ChatPanel";
 import { IconChat, IconMenu, IconSearch } from "../components/icons";
@@ -37,6 +40,15 @@ type TabId =
   | "timeline"
   | "transactions"
   | "sources";
+
+const TAB_IDS: TabId[] = [
+  "graph",
+  "infrastructure",
+  "evidence",
+  "timeline",
+  "transactions",
+  "sources",
+];
 
 /* ---------------------------------------------------------------- */
 /*  Small hooks                                                      */
@@ -99,6 +111,77 @@ function useQueryHistory(query: string): string[] {
 }
 
 /* ---------------------------------------------------------------- */
+/*  Fake search                                                      */
+/*  Stands in for the real request so the page doesn't answer in     */
+/*  zero milliseconds. Replace with your data fetch when it exists.  */
+/* ---------------------------------------------------------------- */
+
+const SEARCH_STEPS = [
+  "Querying indexed sources",
+  "Resolving aliases and identifiers",
+  "Correlating PGP keys and wallets",
+  "Checking Tor infrastructure",
+  "Scoring attribution",
+];
+
+// Queries already searched this session reload quickly, like a cache hit.
+const resolvedQueries = new Set<string>();
+
+interface SearchState {
+  searching: boolean;
+  progress: number; // 0..1
+  steps: string[];
+  stepIndex: number;
+}
+
+function useFakeSearch(query: string, found: boolean): SearchState {
+  const key = query.trim().toLowerCase();
+  const [tick, setTick] = useState<{
+    key: string;
+    elapsed: number;
+    total: number;
+    done: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!key) return;
+    const total = resolvedQueries.has(key) ? 700 : found ? 3200 : 1800;
+    const start = performance.now();
+    setTick({ key, elapsed: 0, total, done: false });
+
+    const id = setInterval(() => {
+      const elapsed = performance.now() - start;
+      if (elapsed >= total) {
+        clearInterval(id);
+        resolvedQueries.add(key);
+        setTick({ key, elapsed: total, done: true, total });
+      } else {
+        setTick({ key, elapsed, total, done: false });
+      }
+    }, 80);
+    return () => clearInterval(id);
+  }, [key, found]);
+
+  // Ignore state left over from a previous query
+  const current = tick && tick.key === key ? tick : null;
+  const steps = found ? SEARCH_STEPS : SEARCH_STEPS.slice(0, 2);
+  const searching = key !== "" && !(current && current.done);
+  const progress = current ? Math.min(current.elapsed / current.total, 1) : 0;
+  const stepIndex = Math.min(Math.floor(progress * steps.length), steps.length - 1);
+
+  return { searching, progress, steps, stepIndex };
+}
+
+/** Fades a block in; the delay staggers blocks as results arrive. */
+function Reveal({ i = 0, children }: { i?: number; children: ReactNode }) {
+  return (
+    <div className="reveal" style={{ animationDelay: `${i * 70}ms` }}>
+      {children}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- */
 /*  Page                                                             */
 /* ---------------------------------------------------------------- */
 
@@ -108,7 +191,41 @@ export default function Investigation() {
   const query = searchParams.get("q") ?? "";
   const found = matchesQuery(query);
   const [searchInputValue, setSearchInputValue] = useState(query);
-  const [activeTab, setActiveTab] = useState<TabId>("graph");
+
+  // The home page's search tools deep-link to a tab, e.g. ?view=transactions
+  const viewParam = searchParams.get("view");
+  const requestedTab = TAB_IDS.find((t) => t === viewParam);
+  const [activeTab, setActiveTab] = useState<TabId>(requestedTab ?? "graph");
+  useEffect(() => {
+    if (requestedTab) setActiveTab(requestedTab);
+  }, [requestedTab, query]);
+
+  // The console is a full-screen app. Lock the page behind it and keep wheel
+  // and touch scrolling inside the panes, so nothing on the page (or a
+  // smooth-scroll library listening on window) can swallow the scroll.
+  const shellRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previous = { html: html.style.overflow, body: body.style.overflow };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = previous.html;
+      body.style.overflow = previous.body;
+    };
+  }, []);
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el) return;
+    const keepInside = (e: Event) => e.stopPropagation();
+    el.addEventListener("wheel", keepInside, { passive: true });
+    el.addEventListener("touchmove", keepInside, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", keepInside);
+      el.removeEventListener("touchmove", keepInside);
+    };
+  }, []);
 
   // Shell state
   const isXl = useMinWidth(1280);
@@ -131,6 +248,11 @@ export default function Investigation() {
     setBlankChatKey(`${query}::${next}`);
     setChatOpen(true);
   };
+
+  const search = useFakeSearch(query, found);
+  const searchLabel = search.searching
+    ? `${search.steps[search.stepIndex]}…`
+    : undefined;
 
   const historyQueries = useQueryHistory(query);
   const history = historyQueries.map((q) => ({
@@ -185,8 +307,14 @@ export default function Investigation() {
     />
   );
 
-  return (
-    <div className="print-static fixed inset-0 z-40 flex bg-canvas text-fg">
+  // Rendered into document.body so no transformed or clipped ancestor in the
+  // app layout can change what "fixed" means or cut the panes off.
+  return createPortal(
+    <div
+      ref={shellRef}
+      data-lenis-prevent
+      className="print-static fixed inset-0 z-[100] flex bg-canvas text-fg"
+    >
       {/* Left sidebar (desktop) */}
       <div
         className={`no-print hidden shrink-0 border-r border-line-faint transition-[width] duration-200 lg:block ${
@@ -266,19 +394,31 @@ export default function Investigation() {
           </button>
         </header>
 
-        <div className="console-glow scroll-thin print-static min-h-0 flex-1 overflow-y-auto">
+        <div className="console-glow scroll-thin print-static min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-8">
             <div>
               <span className="font-mono text-[11px] uppercase tracking-widest text-accent">
                 Investigative Dossier
               </span>
               <h1 className="mt-2 font-display text-4xl tracking-tight text-fg sm:text-5xl">
-                Subject: {found ? actor.handle : "Unidentified Target"}
+                {search.searching
+                  ? "Searching…"
+                  : `Subject: ${found ? actor.handle : "Unidentified Target"}`}
               </h1>
             </div>
 
-            {!found ? (
-              <div className="rounded-[24px] border border-line bg-card p-10 text-center shadow-surface sm:p-16">
+            {search.searching ? (
+              <div className="space-y-6" aria-busy="true">
+                <SearchProgress
+                  query={query}
+                  steps={search.steps}
+                  stepIndex={search.stepIndex}
+                  progress={search.progress}
+                />
+                <DashboardSkeleton />
+              </div>
+            ) : !found ? (
+              <div className="reveal rounded-[24px] border border-line bg-card p-10 text-center shadow-surface sm:p-16">
                 <div className="font-mono text-xs text-danger">
                   NO CORRELATION RECORD FOUND
                 </div>
@@ -296,80 +436,90 @@ export default function Investigation() {
             ) : (
               <div className="space-y-6">
                 {/* Case metadata + export */}
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs">
-                    <span className="text-fg-subtle">CASE ID:</span>
-                    <span className="text-fg">DT-2026-X88</span>
-                    <span className="text-fg-faint">|</span>
-                    <span className="text-fg-subtle">CLASSIFICATION:</span>
-                    <span className="uppercase text-accent">{actor.category}</span>
+                <Reveal i={0}>
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-xs">
+                      <span className="text-fg-subtle">CASE ID:</span>
+                      <span className="text-fg">DT-2026-X88</span>
+                      <span className="text-fg-faint">|</span>
+                      <span className="text-fg-subtle">CLASSIFICATION:</span>
+                      <span className="uppercase text-accent">{actor.category}</span>
+                    </div>
+                    <ExportToolbar data={mockCase} />
                   </div>
-                  <ExportToolbar data={mockCase} />
-                </div>
+                </Reveal>
 
-                <DashboardStats data={mockCase} />
-                <ActorHeader actor={actor} />
-                <IntelligenceCards
-                  pgpKeys={actor.pgpKeys}
-                  wallets={actor.wallets}
-                  identifiers={actor.identifiers}
-                  sources={sources}
-                />
+                <Reveal i={1}>
+                  <DashboardStats data={mockCase} />
+                </Reveal>
+                <Reveal i={2}>
+                  <ActorHeader actor={actor} />
+                </Reveal>
+                <Reveal i={3}>
+                  <IntelligenceCards
+                    pgpKeys={actor.pgpKeys}
+                    wallets={actor.wallets}
+                    identifiers={actor.identifiers}
+                    sources={sources}
+                  />
+                </Reveal>
 
                 {/* Forensic workspace */}
-                <div className="overflow-hidden rounded-[24px] border border-line bg-card shadow-surface">
-                  <div
-                    role="tablist"
-                    aria-label="Dossier sections"
-                    className="scroll-thin flex overflow-x-auto border-b border-line-faint px-2"
-                  >
-                    {tabs.map((tab) => {
-                      const active = activeTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          role="tab"
-                          aria-selected={active}
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`relative whitespace-nowrap px-4 py-3.5 text-sm font-medium transition-colors ${
-                            active
-                              ? "text-fg"
-                              : "text-fg-subtle hover:text-fg-muted"
-                          }`}
-                        >
-                          {tab.label}
-                          {active && (
-                            <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-accent" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <Reveal i={4}>
+                  <div className="overflow-hidden rounded-[24px] border border-line bg-card shadow-surface">
+                    <div
+                      role="tablist"
+                      aria-label="Dossier sections"
+                      className="scroll-thin flex overflow-x-auto border-b border-line-faint px-2"
+                    >
+                      {tabs.map((tab) => {
+                        const active = activeTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            role="tab"
+                            aria-selected={active}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`relative whitespace-nowrap px-4 py-3.5 text-sm font-medium transition-colors ${
+                              active
+                                ? "text-fg"
+                                : "text-fg-subtle hover:text-fg-muted"
+                            }`}
+                          >
+                            {tab.label}
+                            {active && (
+                              <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-accent" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  <div className="p-4 sm:p-5">
-                    {activeTab === "graph" && (
-                      <RelationshipGraph data={relationships} />
-                    )}
-                    {activeTab === "infrastructure" && (
-                      <InfrastructurePanel findings={infrastructure} />
-                    )}
-                    {activeTab === "evidence" && (
-                      <EvidencePanel
-                        evidence={evidence}
-                        attributionScore={attributionScore}
-                      />
-                    )}
-                    {activeTab === "timeline" && (
-                      <Timeline events={timeline} sources={sources} />
-                    )}
-                    {activeTab === "transactions" && (
-                      <TransactionsTable transactions={transactions} />
-                    )}
-                    {activeTab === "sources" && (
-                      <SourcesPanel sources={sources} />
-                    )}
+                    <div className="p-4 sm:p-5">
+                      {activeTab === "graph" && (
+                        <RelationshipGraph data={relationships} />
+                      )}
+                      {activeTab === "infrastructure" && (
+                        <InfrastructurePanel findings={infrastructure} />
+                      )}
+                      {activeTab === "evidence" && (
+                        <EvidencePanel
+                          evidence={evidence}
+                          attributionScore={attributionScore}
+                        />
+                      )}
+                      {activeTab === "timeline" && (
+                        <Timeline events={timeline} sources={sources} />
+                      )}
+                      {activeTab === "transactions" && (
+                        <TransactionsTable transactions={transactions} />
+                      )}
+                      {activeTab === "sources" && (
+                        <SourcesPanel sources={sources} />
+                      )}
+                    </div>
                   </div>
-                </div>
+                </Reveal>
               </div>
             )}
           </div>
@@ -397,10 +547,13 @@ export default function Investigation() {
           found={found}
           data={mockCase}
           seed={blankChatKey !== chatKey}
+          searching={search.searching}
+          searchLabel={searchLabel}
           onNewChat={startNewChat}
           onClose={() => setChatOpen(false)}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

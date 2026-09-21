@@ -179,7 +179,7 @@ export default function ConsoleSidebar({
         Recents
       </p>
 
-      <ul className="scroll-thin min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 pb-3">
+      <ul className="scroll-thin min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain px-3 pb-3">
         {visible.length === 0 && (
           <li className="px-3 py-2 text-sm text-fg-subtle">
             No matching queries

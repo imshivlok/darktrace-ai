@@ -20,10 +20,12 @@ import {
   currentUser,
   suggestionsFor,
 } from "../data/mockChat";
+import { joinDictation, useSpeechInput } from "../hooks/useSpeechInput";
 import {
   IconCheck,
   IconChevronDown,
   IconClose,
+  IconMic,
   IconNewChat,
   IconSend,
 } from "./icons";
@@ -34,6 +36,9 @@ interface ChatPanelProps {
   data: InvestigationCase;
   /** true: open with the query + summary. false: blank greeting (new chat). */
   seed: boolean;
+  /** While the dossier is still loading, the first reply waits and shows this status. */
+  searching?: boolean;
+  searchLabel?: string;
   onNewChat: () => void;
   onClose: () => void;
 }
@@ -103,45 +108,59 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-/** Shows thinking dots, then reveals the text a few words at a time. */
+/** Shows thinking dots, then reveals the text a few words at a time.
+ *  While `hold` is true (the dossier is still loading) it keeps thinking. */
 function AssistantMessage({
   text,
   animate,
+  hold = false,
+  status,
   onTick,
   onDone,
 }: {
   text: string;
   animate: boolean;
+  hold?: boolean;
+  status?: string;
   onTick: () => void;
   onDone: () => void;
 }) {
   const tokens = useMemo(() => text.split(/(\s+)/), [text]);
-  const skip = !animate || prefersReducedMotion();
-  const [started, setStarted] = useState(skip);
-  const [shown, setShown] = useState(skip ? tokens.length : 0);
+  const reduce = prefersReducedMotion();
+  const [started, setStarted] = useState(!animate);
+  const [shown, setShown] = useState(animate ? 0 : tokens.length);
 
+  // Begin once the hold is released
   useEffect(() => {
-    if (skip) {
+    if (!animate) {
       onDone();
       return;
     }
-    const t = setTimeout(() => setStarted(true), 650);
+    if (hold) return;
+    const t = setTimeout(
+      () => {
+        setStarted(true);
+        if (reduce) setShown(tokens.length);
+      },
+      reduce ? 0 : 450,
+    );
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hold, animate]);
 
+  // Reveal a few words at a time
   const finished = shown >= tokens.length;
   useEffect(() => {
-    if (!started || skip || finished) return;
+    if (!animate || !started || reduce || finished) return;
     const id = setInterval(() => {
       setShown((s) => Math.min(s + 4, tokens.length));
     }, 32);
     return () => clearInterval(id);
-  }, [started, skip, finished, tokens.length]);
+  }, [animate, started, reduce, finished, tokens.length]);
 
   useEffect(() => {
     onTick();
-    if (started && !skip && shown >= tokens.length) onDone();
+    if (animate && started && shown >= tokens.length) onDone();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, started]);
 
@@ -157,13 +176,18 @@ function AssistantMessage({
           <FormattedText text={tokens.slice(0, shown).join("")} />
         ) : (
           <div
-            className="flex h-6 items-center gap-1"
+            className="flex min-h-6 items-center gap-2"
             role="status"
-            aria-label="DarkTrace is thinking"
+            aria-label={status ?? "DarkTrace is thinking"}
           >
-            <span className="typing-dot h-1.5 w-1.5 rounded-full bg-fg-subtle" />
-            <span className="typing-dot h-1.5 w-1.5 rounded-full bg-fg-subtle" />
-            <span className="typing-dot h-1.5 w-1.5 rounded-full bg-fg-subtle" />
+            <span className="flex items-center gap-1">
+              <span className="typing-dot h-1.5 w-1.5 rounded-full bg-fg-subtle" />
+              <span className="typing-dot h-1.5 w-1.5 rounded-full bg-fg-subtle" />
+              <span className="typing-dot h-1.5 w-1.5 rounded-full bg-fg-subtle" />
+            </span>
+            {status && (
+              <span className="truncate text-xs text-fg-subtle">{status}</span>
+            )}
           </div>
         )}
       </div>
@@ -180,6 +204,8 @@ export default function ChatPanel({
   found,
   data,
   seed,
+  searching = false,
+  searchLabel,
   onNewChat,
   onClose,
 }: ChatPanelProps) {
@@ -203,6 +229,11 @@ export default function ChatPanel({
   const [draft, setDraft] = useState("");
   const [model, setModel] = useState("Quick");
   const [modelOpen, setModelOpen] = useState(false);
+
+  const dictationBase = useRef("");
+  const speech = useSpeechInput((spoken) =>
+    setDraft(joinDictation(dictationBase.current, spoken)),
+  );
 
   const idRef = useRef(10);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -229,15 +260,21 @@ export default function ChatPanel({
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
+  // Grow with the text, including text that arrives by dictation
   useEffect(() => {
-    if (draft === "" && textareaRef.current) {
-      textareaRef.current.style.height = "auto";
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    // scrollHeight is 0 while the panel is hidden; leave it on "auto" then
+    if (el.scrollHeight > 0) {
+      el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
     }
   }, [draft]);
 
   const send = (raw: string) => {
     const text = raw.trim();
     if (!text || busy) return;
+    speech.cancel();
     const userId = idRef.current++;
     const replyId = idRef.current++;
     setMessages((m) => [
@@ -295,7 +332,7 @@ export default function ChatPanel({
       {/* Conversation */}
       <div
         ref={scrollRef}
-        className="scroll-thin min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5"
+        className="scroll-thin min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-4 py-5"
       >
         {messages.length === 0 && (
           <h2 className="pt-4 font-display text-4xl leading-[1.05] tracking-tight text-fg">
@@ -315,6 +352,8 @@ export default function ChatPanel({
               key={m.id}
               text={m.text}
               animate={m.animate}
+              hold={seeded && m.id === 2 && searching}
+              status={seeded && m.id === 2 && searching ? searchLabel : undefined}
               onTick={scrollToEnd}
               onDone={handleDone}
             />
@@ -358,24 +397,32 @@ export default function ChatPanel({
             ref={textareaRef}
             rows={1}
             value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              const el = e.currentTarget;
-              el.style.height = "auto";
-              el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
-            }}
+            onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 send(draft);
               }
             }}
-            placeholder={found ? "Ask about this dossier" : "Ask DarkTrace"}
+            placeholder={
+              speech.listening
+                ? "Listening…"
+                : found
+                  ? "Ask about this dossier"
+                  : "Ask DarkTrace"
+            }
             aria-label="Message the assistant"
             className="max-h-36 w-full resize-none bg-transparent px-2 py-1.5 text-sm text-fg placeholder:text-fg-faint focus:outline-none"
           />
 
+          {speech.error && (
+            <p role="alert" className="px-2 pb-1 text-xs text-danger">
+              {speech.error}
+            </p>
+          )}
+
           <div className="mt-1 flex items-center justify-between">
+            <div className="flex items-center gap-1">
             <div className="relative" ref={modelRef}>
               <button
                 type="button"
@@ -420,6 +467,37 @@ export default function ChatPanel({
                   ))}
                 </div>
               )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!speech.listening) dictationBase.current = draft;
+                speech.toggle();
+              }}
+              aria-pressed={speech.listening}
+              aria-label={speech.listening ? "Stop voice input" : "Start voice input"}
+              title={
+                speech.supported
+                  ? speech.listening
+                    ? "Stop voice input"
+                    : "Voice input"
+                  : "Voice input isn't supported in this browser"
+              }
+              className={`relative flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                speech.listening
+                  ? "bg-accent-solid text-white"
+                  : "text-fg-muted hover:bg-fg/[0.07] hover:text-fg"
+              }`}
+            >
+              {speech.listening && (
+                <span
+                  className="absolute inset-0 animate-ping rounded-full bg-accent/40 motion-reduce:animate-none"
+                  aria-hidden="true"
+                />
+              )}
+              <IconMic className="relative h-[17px] w-[17px]" />
+            </button>
             </div>
 
             <button
